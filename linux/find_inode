@@ -1,0 +1,8 @@
+#!/bin/bash
+
+## 遍历目录，输出inode大小
+for i in /dump/10/nm-local-dir/*
+do
+    echo $i
+    sudo find $i | wc -l
+done
