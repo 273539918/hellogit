@@ -1,0 +1,26 @@
+
+## 表结构如下
+
+CREATE TABLE `stream_brs_service_status` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `bayes_cluster` varchar(64) NOT NULL COMMENT 'bayes_cluster',
+  `service_status` int(11) NOT NULL,
+  `collect_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=19008 DEFAULT CHARSET=utf8
+
+
+desc stream_brs_service_status;
++----------------+------------------+------+-----+-------------------+-----------------------------+
+| Field          | Type             | Null | Key | Default           | Extra                       |
++----------------+------------------+------+-----+-------------------+-----------------------------+
+| id             | int(10) unsigned | NO   | PRI | NULL              | auto_increment              |
+| bayes_cluster  | varchar(64)      | NO   |     | NULL              |                             |
+| service_status | int(11)          | NO   |     | NULL              |                             |
+| collect_time   | timestamp        | YES  |     | CURRENT_TIMESTAMP | on update CURRENT_TIMESTAMP |
++----------------+------------------+------+-----+-------------------+-----------------------------+
+
+## 需求： 获取最新collect_time的bayes_cluster的service_status值
+
+
+select * from stream_brs_service_status where service_status=1 and collect_time = ( select max(collect_time) from stream_brs_service_status )
