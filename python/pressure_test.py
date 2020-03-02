@@ -33,7 +33,9 @@ class Worker():
         for i in range(self.num):
             r = Worker.send_request()
             if r:
-                cost_time.append(r.elapsed.total_seconds())
+                time = r.elapsed.total_seconds()
+                cost_time.append(time)
+                #print("第 %s 次请求耗时: %s" % (i+1,r.content) )
 
     def output_result(self):
 
