@@ -1,0 +1,15 @@
+k8s中的虚拟机pod都有一个虚拟的ip: PodIp，pod之间可以通过该ip进行通信。一个应用服务是由一个/一组pod组成的，但是PodIp是不固定的
+，因为pod随时可能被销毁重建。为了屏蔽PodIp的这种变化，同时也为了服务发现和负载均衡，k8s引入了service的概念，在service发布的时候
+k8s为每一个service分配了一个ClusterIp。在k8s的每一个worker节点上，都部署了两个组件，一个是Kubelet,一个是kube-proxy。其中
+kube-proxy是k8s服务发现实现的关键。接下来看一下服务发现的流程：
+
+1. 在服务发布的时候，kubelet会启动pod实例
+2. pod启动完成之后，kubelet将服务对应的PodIp列表注册到Master节点。随着Service的发布，k8s将为service分配一个ClusterIp，
+相关的信息都记录在master节点上
+3. kube-proxy负责发现ClusterIp和PodIp之间的映射关系，并修改本地iptables的转发规则，指示iptables在接收某个ClusterIp请求的时候，转发
+到对应的PodIp上，并进行负载均衡。
+4. 当消费者pod要访问某一个服务时，通过ClusterIp进行调用，这个ClusterIp会被本地的iptabls截获并转发。
+
+ 实际上消费者pod调用的应用也不是直接调用ClusterIp的，而是通过服务名，因为ClusterIp也会变，为了屏蔽ClusterIp的可能变化，k8s在每一个worker
+节点上还引入了一个KubeDNS组件，他可以通过Master来发现服务名和ClusterIp之间的映射关系，因此消费者pod可以通过KubeDNS来简介发现服务的
+ClusterIp

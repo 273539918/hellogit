@@ -1,0 +1,9 @@
+1. kubectl发起一个Create new ReplicaSet的请求
+2. API Server将这个请求存储到etcd中
+3. Controller manager监听到API Server的这个事件。开始比较预期的集群状态和当前的集群状态，发现不一致，需要创建新的pod。根据步骤1通过kubectl
+提交的发布模版，Controller manager通过API Server在etcd中更新需要创建相应的pod资源
+4. Scheduler监听到需要创建相应pod的事件，运行调度算法选择集群中的空闲节点，通过API Server更新pod的定义，这个定义指定将pod运行到相应的
+worker节点上。此时，应用还没有真正发布，Controller manager和Scheduler只是更新了集群的期望状态
+5. 一旦pod被指定分配到某个Worker节点，API Server会通知相应节点上的Kubelet
+6. Kubelet接收到通知，就会指示节点上的Container Runtime进行工作
+7. Container Runtime根据指示下载镜像，运行容器， kubelet也开始监控容器的运行，此时应用容器正式运行了
