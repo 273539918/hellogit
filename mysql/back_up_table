@@ -1,0 +1,4 @@
+
+## 创建queue2表，备份queue中的数据
+
+create table queue2 select * from queue;
