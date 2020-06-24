@@ -1,4 +1,5 @@
 
 ## 创建queue2表，备份queue中的数据
 
+## 注意这种方式会丢失表的主键、索引等信息
 create table queue2 select * from queue;

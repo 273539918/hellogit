@@ -2,17 +2,17 @@
 # -*- coding: UTF-8 -*-
 ##
 
-machine_cpu = 32
-machine_mem = 128
-yarn_cpu = 24
-yarn_mem = 128
-cpu_ratio = 1.30
-mem_ratio = 1.30
+machine_cpu = 96
+machine_mem = 512
+yarn_cpu = 92
+yarn_mem = 512
+cpu_ratio = 1.21
+mem_ratio = 1.21
 cpu_high_water = 0.9
 cpu_low_water = 0.5
 mem_high_water = 0.9
 mem_low_water = 0.7
-rm_host = "uhadoopm4.ot7.tbsite.net"
+rm_host = "bd011014044002.ea120.tbsite.net"
 
 print """ ---- update key  for yarn.site  ---- """
 print "yarn.nodemanager.resource.cpu.report-ratio=%.2f" % (cpu_ratio)
@@ -26,7 +26,6 @@ print "yarn.nodemanager.overallocation.general-utilization-threshold=%.2f" % (
         machine_mem * mem_high_water / (yarn_mem * mem_ratio) - 0.1)
 )
 print """yarn.nodemanager.resource.memory.enforced=false
-yarn.nodemanager.container-memory.over-ratio=5
 yarn.nodemanager.resource.percentage-physical-cpu-limit=95
 yarn.scheduler.maximum-allocation-vcores=3000
 yarn.am.liveness-monitor.expiry-interval-ms=300000

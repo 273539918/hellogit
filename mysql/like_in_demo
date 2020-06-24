@@ -1,0 +1,4 @@
+## like 有多个正则，通过REGEXP来实现
+
+SELECT count(*) FROM dwd_bigdata_events WHERE
+event_desc REGEXP 'pending|长期未使用|小于队列保障资源配置|回收队列的非保障资源';
