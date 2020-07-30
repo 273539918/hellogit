@@ -6,8 +6,8 @@ machine_cpu = 96
 machine_mem = 512
 yarn_cpu = 92
 yarn_mem = 512
-cpu_ratio = 1.21
-mem_ratio = 1.21
+cpu_ratio = 1.31
+mem_ratio = 1.31
 cpu_high_water = 0.9
 cpu_low_water = 0.5
 mem_high_water = 0.9
@@ -28,7 +28,6 @@ print "yarn.nodemanager.overallocation.general-utilization-threshold=%.2f" % (
 print """yarn.nodemanager.resource.memory.enforced=false
 yarn.nodemanager.resource.percentage-physical-cpu-limit=95
 yarn.scheduler.maximum-allocation-vcores=3000
-yarn.am.liveness-monitor.expiry-interval-ms=300000
 """
 print """ ---- end ---- """
 
@@ -45,7 +44,6 @@ print "yarn.resourcemanager.monitor.capacity.hotspot-rebalance.cpu.low-water-mar
 print "yarn.resourcemanager.monitor.capacity.hotspot-rebalance.memory.high-water-mark=%s" % (
     mem_high_water_mark)
 print "yarn.resourcemanager.monitor.capacity.hotspot-rebalance.memory.low-water-mark=%s" % (mem_low_water_mark)
-print "yarn.resourcemanager.monitor.capacity.hotspot-rebalance.non-overlimit-guaranteed-containers.preemption-disabled=false"
 
 print """ ---- end ---- """
 
