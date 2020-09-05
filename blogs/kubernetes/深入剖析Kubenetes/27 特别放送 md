@@ -1,0 +1,184 @@
+
+
+## 2019 年，容器技术生态会发生些什么
+
+不同于一个只能生产资源的集群管理工具，Kubernetes项目最大的价值，在于它从一开始就提倡的声明式API和以此为基础“控制器”模式
+
+"高可扩展性"、“工作流驱动”和“按使用计费”，可以认为是Serverless最主要的三个特征。
+
+“云原生”的本质，不是简单对Kubernetes生态体系的一个指代。“云原生”刻画出的，是一个使用户能低心智负担的、敏捷的、以可扩展、可复制的方式，最大化利用“云”的能力、发挥“云”的价值的一条最佳路径。
+
+
+
+
+
+## 基于Kubernetes的云原生应用管理，到底应该怎么做？
+
+在《为什么我们需要Pod？》这篇文章中，为了讲解Pod里容器间的关系（即：容器设计模式）的典型场景，我举了一个“WAR包与Web服务器解耦”的例子。在这个例子中，我既没有让你通过Volume的方式将WAR包挂载到Tomcat中，也没有建议你把WAR包和Tomcat打包在一个镜像里，而是用了一个InitContainer将WAR包“注入”给了Tomcat容器。
+
+不过，不同用户面对的场景不同，对问题的思考角度也不一样。这些问题总结起来，其实无外乎有两个疑惑：
+
+1、如果WAR包更新了，那不是也得重新制作WAR包容器的镜像么？这和重新打Tomcat镜像有很大区别吗？
+
+2、当用户通过YAML文件将WAR包镜像更新后，整个Pod不会重建么？Tomcat需要重启么？
+
+这里的两个问题，实际上都聚焦在了这样一个对于Kubernetes项目至关重要的核心问题之上：基于Kubernetes的应用管理，到底应该怎么做？
+
+### 回答问题1:
+
+ 一般来说，如果组织的规模不大、发布和迭代的次数不多，将WAR包的发布流程和Tomcat的发布流程解耦，实际上很难有较强的体感。在这些团队中，Tomcat本身很可能就是开发人员自己负责管理的，甚至被认为是应用的一部分，无需进行很明确的分离。而对于更多的组织来说，Tomcat作为全公司通用的Web服务器，往往有一个专门的小团队兼职甚至全职负责维护。这不仅包括了版本管理、统一升级和安全补丁等工作，还会包括全公司通用的性能优化甚至定制化内容。
+
+在这种场景下，WAR包的发布流水线（制作WAR包镜像的流水线），和Tomcat的发布流水线（制作Tomcat镜像的流水线）其实是通过两个完全独立的团队在负责维护，彼此之间可能都不知晓。
+
+这时候，在Pod的定义中直接将两个容器解耦，相比于每次发布前都必须先将两个镜像“融合”成一个镜像然后再发布，就要自动化得多了。这个原因是显而易见的：开发人员不需要额外维护一个“重新打包”应用的脚本、甚至手动地去做这个步骤。
+
+这正是上述设计模式带来的第一个好处：自动化
+
+当然，正如另一些用户指出的那样，这个“解耦”的工作，貌似也可以通过把WAR包以Volume的方式挂载进Tomcat容器来完成吧？
+
+然而，相比于Volume挂载的方式，通过在Pod定义中解耦上述两个容器，其实还会带来另一个重要的好处，叫做：自描述
+
+为了解释这个好处，我们不妨来重新看一下这个Pod的定义：
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: javaweb-2
+spec:
+  initContainers:
+  - image: geektime/sample:v2
+    name: war
+    command: ["cp", "/sample.war", "/app"]
+    volumeMounts:
+    - mountPath: /app
+      name: app-volume
+  containers:
+  - image: geektime/tomcat:7.0
+    name: tomcat
+    command: ["sh","-c","/root/apache-tomcat-7.0.42-v2/bin/start.sh"]
+    volumeMounts:
+    - mountPath: /root/apache-tomcat-7.0.42-v2/webapps
+      name: app-volume
+    ports:
+    - containerPort: 8080
+      hostPort: 8001 
+  volumes:
+  - name: app-volume
+    emptyDir: {}
+```
+
+现在，我来问你这样一个问题： 这个Pod里，应用的版本是多少？Tomcat的版本又是多少？
+
+相信你一眼就能看出来：应用版本是v2，Tomcat的版本是 7.0.42-v2。
+
+所以我们说，一个良好编写的Pod的YAML文件应该是“自描述”的，它直接描述了这个应用本身的所有信息。
+
+但是，如果我们改用Volume挂载的方式来解耦WAR包和Tomcat服务器，这个Pod的YAML文件会变成什么样呢？如下所示：
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: javaweb-2
+spec:
+  containers:
+  - image: geektime/tomcat:7.0
+    name: tomcat
+    command: ["sh","-c","/root/apache-tomcat-7.0.42-v2/bin/start.sh"]
+    volumeMounts:
+    - mountPath: /root/apache-tomcat-7.0.42-v2/webapps
+      name: app-volume
+    ports:
+    - containerPort: 8080
+      hostPort: 8001 
+  volumes:
+  - name: app-volume
+    flexVolume:
+      driver: "alicloud/disk"
+      fsType: "ext4"
+      options:
+        volumeId: "d-bp1j17ifxfasvts3tf40"
+```
+
+在上面这个例子中，我们就通过了一个叫做“app-volume”的数据卷（Volume），来为我们的Tomcat容器提供WAR包文件。需要注意的是，这个Volume必须是持久化类型的数据卷（比如本例中的阿里云盘），绝不可以是emptyDir或者hostPath 这种临时的宿主机目录，否则一旦Pod重新调度你的WAR包就找不回来了。
+
+然而，如果这时候我再问你：这个Pod里，应用的版本是多少？Tomcat的版本又是多少？
+
+这时候，你可能就要傻眼了：在这个Pod YAML文件里，根本看不到应用的版本，它是通过Volume挂载而来的。
+
+也就是说，这个YAML文件再也没有“自描述”的能力了。
+
+更为棘手的事，在这样的一个系统中，你肯定是不可能手动地往这个云盘里拷贝WAR包的。所以，上面这个Pod想要真正工作起来，你还必须在外部再维护一个系统，专门负责再云盘里拷贝指定版本的WAR包，或者直接在制作这个云盘的过程中把指定WAR包打进去。然而，无论怎么做，这个工作都是非常不舒服并且自动化程度极低的，强烈不推荐。
+
+想要“Volume”挂载的方式真正能工作，可行方法只有一种：那就是写一个专门的Kubernetes Volume插件（比如，Flexvolume或者CSI插件）。这个插件的特殊之处，在于它在执行完“Mount阶段之后”，会自动执行一条从远端下载指定WAR包文件的命令，从而将WAR包正确放置在这个Volume里。这个WAR包文件的名字和路径，可以通过Volume的自定义参数传递，比如：
+
+```
+...
+volumes:
+  - name: app-volume
+    flexVolume:
+      driver: "geektime/war-vol"
+      fsType: "ext4"
+      options:
+        downloadURL: "https://github.com/geektime/sample/releases/download/v2/sample.war"
+```
+
+在这个例子中，我就定义了app-volume的类型是geektime/war-vol，在挂载的时候，它会自动从downloadURL指定的地址下载指定的WAR包，问题解决。
+
+可以看到，这个YAML文件也是“自描述”的；因为你可以通过downloadURL等参数知道这个应用到底是什么版本。看到这里，你是不是已经感受到“Volume挂载的方式”实际上一点都不简单？
+
+在明白了我们在Pod定义中解耦WAR包容器和Tomcat容器能够得到的两个好处之后，第一个问题也就回答得差不多了。这个问题的本质，其实是一个关于“Kubernetes应用究竟应该如何描述”的问题。
+
+而这里的原则，最重要的就是“自描述”。
+
+我们之前已经反复讲解过，Kubernetes项目最强大的能力，就是“声明式”的应用定义方式。这个”声明式“背后的设计思想，是在YAML文件（Kubernetes API对象）中描述应用的“终态”。然后Kubernetes负责通过“控制器模式”不断地将整个系统的实际状态向这个“终态”逼近并且达成一致。
+
+而“声明式”最大的好处是什么呢？
+
+“声明式”带来最大的好处，其实正是“自动化”。作为一个kubernete用户，你只需要在YAML文件里描述清楚这个应用长什么样子，那么剩下的所有事情，就都可以放心地交给Kubernetes自动完成了：它会通过控制器模式确保这个系统里的应用状态，最终并且始终跟你在YAML文件里的描述完全一致。
+
+这种“把简单交给用户，把复杂留给自己”的精神，正是一个“声明式”项目的精髓所在了。这也意味着，如果你的YAML文件不是“自描述”的，那么Kubernetes就不能“完全”理解你的应用“终态”到底是什么样子的，它也就没办法把所有的“复杂”留给自己。这部，你就得自己去写一个额外Volum插件去了。
+
+### 回答问题2
+
+当通过YAML文件将WAR包镜像更新后，整个Pod不会重建么？Tomcat需要重启么？
+
+实际上，当一个Pod里的容器镜像备更新后，kubelet本身就能够判断究竟是哪个容器需要更新，而不会“无脑”地重建整个Pod。当然，你的Tomcat需要配置好reloadable="true"，这样就不需要重启Tomcat服务器了，这是一个非常常见的做法。
+
+但是，这里还有一个细节需要注意。即使kubelet本身能够“智能”地单独重建被更新的容器，但如果你的Pod是用Deployment管理的话，它就会按照自己的发布策略（RolloutStrategy）来通过重建的方式更新Pod。
+
+这时候，如果这个Pod被重新调度到其他机器，那么kubelet“单独重建被更新的容器”的能力就没办法发挥作用了。所以说，要让这个案例中的“解耦”能力发挥到最佳程度，你还需要一个“原地升级”的功能，即：允许Kubernetes在原地进行pod的更新，避免冲调度带来的各种麻烦。
+
+原地升级的能力，在Kubernetes的默认控制器中都是不支持的。但，这是社会开源控制器项目的重要功能之一，可以研究开源的这个项目：https://github.com/openkruise/kruise
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

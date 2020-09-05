@@ -5,14 +5,14 @@
 machine_cpu = 96
 machine_mem = 512
 yarn_cpu = 92
-yarn_mem = 512
-cpu_ratio = 1.31
-mem_ratio = 1.31
+yarn_mem = 430
+cpu_ratio = 1.10
+mem_ratio = 1.10
 cpu_high_water = 0.9
 cpu_low_water = 0.5
 mem_high_water = 0.9
 mem_low_water = 0.7
-rm_host = "bd011014044002.ea120.tbsite.net"
+rm_host = "bd033022000198.ea119.tbsite.net"
 
 print """ ---- update key  for yarn.site  ---- """
 print "yarn.nodemanager.resource.cpu.report-ratio=%.2f" % (cpu_ratio)
