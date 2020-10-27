@@ -1,0 +1,11 @@
+
+
+## 添加列
+alter table 表名 add column 列名 varchar(30);
+
+alter table stream_blink_d11_resource_filing add column description text;
+
+## 修改列
+alter table bbb change nnnnn hh int;
+
+alter table stream_blink_d11_resource_filing change description applyReason

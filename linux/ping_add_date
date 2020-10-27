@@ -1,0 +1,4 @@
+## ping命令加上日期
+
+ping 11.117.93.93  -c 10 | awk '{ print $0"\t" strftime("%Y-%m-%d %H:%M:%S",systime()) } '
+

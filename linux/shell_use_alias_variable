@@ -1,0 +1,6 @@
+#!/bin/bash
+
+## 在shell中使用alias的变量
+source ~/.bashrc
+shopt -s expand_aliases
+echo $mysqlstream
