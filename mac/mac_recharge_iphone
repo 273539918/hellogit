@@ -1,0 +1,4 @@
+## mac给iphone充电一直闪断
+sudo killall -STOP -c usbd
+
+##

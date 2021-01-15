@@ -1,14 +1,18 @@
-问题： 容器的增量rootfs，使用的是copy on write
-
-(1) 修改的文件在只读层是什么情况
-(2) 修改的文件在读写层是什么情况
+问题： 
 
 
 
-**只读层**时只读的，但还有wh，wh是删除时，底层将删除文件遮住。
- **init层**夹在只读层与读写层之间，init 层是docker项目单独生成的一个内部层。专门用来放 /etc/hosts/ , /etc/resove.conf 等信息。
- 需要这样一个层的原因是，这些文件本来只属于只读的一部分，但是需要启动容器是由一些改变。
- **读写层**就是可以读写的了，挂载方式为rw。修改的是以增量的方式递增。
+```
+$docker run --name nginx-1 -d nginx:latest
+docker: Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Post http://%2Fvar%2Frun%2Fdocker.sock/v1.40/containers/create?name=nginx-1: dial unix /var/run/docker.sock: connect: permission denied.
+See 'docker run --help'.
+```
+
+机器： https://sa.alibaba-inc.com/ops/terminal.html?ip=11.88.191.32
+
+
+
+https://blog.csdn.net/liangllhahaha/article/details/92077065
 
 
 

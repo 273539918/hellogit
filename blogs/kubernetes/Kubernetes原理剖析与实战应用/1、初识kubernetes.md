@@ -57,15 +57,201 @@ Add-on 组件：
 
 
 
+### 在线Kubernetes集群
+
+https://www.katacoda.com/courses/kubernetes/playground
+
+#### 本地搭建Kuberentes集群
+
+minikube: https://github.com/kubernetes/minikube
+
+### 搭建生产可用的Kubernetes集群
+
+Kubeadm: https://kubernetes.io/docs/reference/setup-tools/kubeadm/
 
 
 
+## 04 | 核心定义：Kubernetes 是如何搞定“不可变基础设施”的？
+
+### 云原生的CNCF定义
+
+云原生的代表技术包括容器技术、服务网格、微服务、不可变基础设施和声明式API。 借助这些典型的云原生技术，我们可以构建容错性好、易于管理、便于观察的松耦合系统。结合可靠的自动化手段，云原生技术使得工程师能够轻松对系统作出频繁和可预测的重大变更。
+
+### 什么是不可变基础设施
+
+不可变基础设施中的基础设施可以理解为服务器、虚拟机或者是容器。
+
+与不可变基础设施对应的是可变基础设施，在传统的开发运维体系中，软件开发完成后，需要管理员登陆通过SSH登录到服务上来进行服务器的配置、软件包的安装等等操作，后续还可能会对服务器的配置做各种更改，这种可变基础设施带来的问题是：
+
+1） 基础设施持续的变更给服务运行态引入了过多的中间态，增加了不可预知的风险
+2） 不易标准化，交付运维过程异常痛苦，比如你可能经常遇到的，某个软件包几个月之前安装还能够正常运行，现在到一个新环境安装后，竟然无法正常工作了。
+3）故障发生时，难以及时快速构建出新的服务副本；
+
+不可变基础设施，则是部署完成以后，便成为一种只读状态，不可对其进行任何更改。如果需要更新或修改，就使用新的环境或服务器去替代旧的。可变和不可变最核心的区别在于：前者的组件旨在在部署后进行更改;后者的组成部分旨在保持不变并最终被替换
+
+Kubernetes中的不可变基础设施就是Pod。
+
+### Kubernetes为什么不直接使用容器，而抽象出Pod
+
+因为使用一个新的逻辑对象 Pod 来管理容器，可以在不重载容器信息的基础上，添加更多的属性，而且也方便跟容器运行时进行解耦，兼容度高。比如：
+
+（1）存活探针（Liveness Probe）可以从应用程序的角度去探测一个进程是否还存活着，在容器出现问题之前，就可以快速检测到问题；
+（2）容器启动后和终止前可以进行的操作，比如，在容器停止前，可能需要做一些清理工作，或者不能马上结束进程；
+
+（3）定义了容器终止后要采取的策略，比如始终重启、正常退出才重启等；
 
 
 
+### 例子
+
+一个pod的yaml
+
+```
+apiVersion: v1 #指定当前描述文件遵循v1版本的Kubernetes API
+
+kind: Pod #我们在描述一个pod
+
+metadata:
+
+  name: twocontainers #指定pod的名称
+
+  namespace: default #指定当前描述的pod所在的命名空间
+
+  labels: #指定pod标签
+
+    app: twocontainers
+
+  annotations: #指定pod注释
+
+    version: v0.5.0
+
+    releasedBy: david
+
+    purpose: demo
+
+spec:
+
+  containers:
+
+  - name: sise #容器的名称
+
+    image: quay.io/openshiftlabs/simpleservice:0.5.0 #创建容器所使用的镜像
+
+    ports:
+
+    - containerPort: 9876 #应用监听的端口
+
+  - name: shell #容器的名称
+
+    image: centos:7 #创建容器所使用的镜像
+
+    command: #容器启动命令
+
+      - "bin/bash"
+
+      - "-c"
+
+      - "sleep 10000"
+
+```
+
+ 
+
+```
+#kubectl apply -f two_containers_pod.yaml
+pod/twocontainers created
+#kubectl exec twocontainers -c shell -i -i --bash
+[root@twocontainers /]# curl -s localhost:9876/info
+{"host": "localhost:9876", "version": "0.5.0", "from": "127.0.0.1"}
+```
 
 
 
+## 05 | K8s Pod：最小调度单元的使用进阶及实践
+
+
+
+查看pod的状态
+
+```
+$kubectl get pod twocontainers -o=jsonpath='{.status.phase}'
+Running
+```
+
+### Pod的健康检测
+
+通过下例说明Pod的检查检查： startupProbe、livenessProbe、readinessProbe的工作流程
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: probe-demo
+  namespace: demo
+spec:
+  containers:
+  - name: sise
+    image: quay.io/openshiftlabs/simpleservice:0.5.0
+    ports:
+    - containerPort: 9876
+    readinessProbe:
+      tcpSocket:
+        port: 9876
+      periodSeconds: 10
+    livenessProbe:
+      periodSeconds: 5
+      httpGet:
+        path: /health
+        port: 9876
+    startupProbe:
+      httpGet:
+        path: /health
+        port: 9876
+      failureThreshold: 3
+      periodSeconds: 2
+```
+
+1、 kubelet创建好对应的容器后，会先运行 startupProbe 中的配置，这里我们用 HTTP handler 每隔 2 秒钟通过 http://localhost:9876/health 来判断服务是不是启动好了。这里我们会尝试 3 次检测，如果 6 秒以后还未成功，那么这个容器就会被干掉。而是否重启，这就要看 Pod 定义的重启策略。
+
+2、一旦容器通过了 startupProbe 后，Kubelet 会每隔 5 秒钟进行一次探活检测 （livenessProbe），如果检查通过，表示容器正常存活
+
+3、每隔 10 秒进行一次就绪检测（readinessProbe）。如果检查不通过，表示容器提供的服务不正常，如果有Service就会将其“隔离”，待服务正常后恢复
+
+
+
+### init容器
+
+Pod中允许定义init容器来完成一些初始化的工作，应用容器专注于业务处理，其他一些无关的初始化任务就可以放到 init 容器中。这种解耦有利于各自升级，也降低相互依赖。一个 Pod 中允许有一个或多个 init 容器。init 容器和其他一般的容器非常像，其与众不同的特点主要有：
+1）总是运行到完成，可以理解为一次性的任务，不可以运行常驻型任务，因为会 block 应用容器的启动运行；
+2）顺序启动执行，下一个的 init 容器都必须在上一个运行成功后才可以启动；
+3）禁止使用 readiness/liveness 探针，可以使用 Pod 定义的activeDeadlineSeconds，这其中包含了 Init Container 的启动时间；
+4）禁止使用 lifecycle hook。
+
+如下是一个例子：
+
+在 myapp-container 启动之前，它会依次启动 init-myservice、init-mydb，分别来检查依赖的服务是否可用。
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  namespace: demo
+  labels:
+    app: myapp
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox:1.31
+    command: [‘sh’, ‘-c’, ‘echo The app is running! && sleep 3600‘]
+  initContainers:
+  - name: init-myservice
+    image: busybox:1.31
+    command: ['sh', '-c', 'until nslookup myservice; do echo waiting for myservice; sleep 2; done;']
+  - name: init-mydb
+    image: busybox:1.31
+    command: ['sh', '-c', 'until nslookup mydb; do echo waiting for mydb; sleep 2; done;']
+```
 
 
 

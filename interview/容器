@@ -1,0 +1,26 @@
+【hyperviso/KVM/docker/k8s】
+问题：hyperviso/kvm/docker/k8s之间的关系是什么？
+答：
+概念：
+Hypervisor： 用来实现硬件资源的虚拟化 ，一台物理机，通过Hypervisor变成几台虚拟机
+KVM: hyperviso的一种，基于kernal内核实现
+Docker： 一种容器的实现方式，本质使用的是Linux cgroup
+k8s : 用来管理容器，比如管理 docker container，kata container, rkt container .....
+发展历程：
+1、Linux cgroup实现容器的方式共享内核，有潜在的安全问题。因此有需求是需要通过虚拟机来隔离内核。
+2、虚拟机一般通过hypervisor来对硬件资源进行虚拟化后实现。
+3、为了通过虚拟机来隔离内核，出现了基于内核的虚拟机（Kernel-based Virtual Machine，缩写为KVM），而KVM本质上是一种hyperviso。
+因此能够实现在硬件上，直接通过KVM虚拟出来几台虚拟机，再在虚拟机上运行容器，达到容器+隔离内核的目标
+4、为了更好的管理容器，出现了k8s。
+关系：
+Hypervisor是一类软件的总称，这类软件通常用来对硬件资源进行虚拟化。KVM就是hyperviso的一种。
+Docker是一种软件的实现方式，可以运行在虚拟机或者物理机上，因此通过KVM产生的虚拟机上通常会运行一个或多个docker 容器。
+k8s用来管理所有的容器（几百上前台虚拟机或物理机上的容器）
+
+【Kata/docker/gvisor】
+1、是否是独立与宿主机的内核？
+docker容器不是，多个docker容器共享一个宿主机内核
+kata和gvisor的内核都是一个容器一个
+2、kata和gvsior的区别
+kata是轻量级虚拟机上运行一个独立内核，完全独立与宿主机内核； gvsior是用软件实现一个linux内核，它只能是宿主机内核的一个子集
+

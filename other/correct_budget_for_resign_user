@@ -1,0 +1,6 @@
+#!
+empid='193403'
+superworker_empid='195851'
+echo " update stream_yarn_queue_meta  set owner='$superworker_empid' where owner='$empid' "
+echo " select * from stream_blink_budget_info where user='$superworker_empid' ""
+echo " update stream_blink_budget_info set user='$superworker_empid' where user='$empid' "
